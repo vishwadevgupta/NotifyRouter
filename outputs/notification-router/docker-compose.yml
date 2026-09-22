@@ -1,0 +1,12 @@
+services:
+  notification-router:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file: .env
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notification Router Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #e2e8f0;
+      background: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top, #111827 0%, #0b1220 35%, #07101c 100%); }
+    header { padding: 40px 24px 8px; text-align: center; }
+    header h1 { margin: 0; font-size: clamp(2.1rem, 4vw, 3rem); letter-spacing: -0.04em; color: #f8fafc; }
+    header p { margin: 18px auto 0; max-width: 700px; color: #cbd5e1; line-height: 1.75; }
+    main { width: min(980px, calc(100% - 32px)); margin: 0 auto 40px; }
+    .grid { display: grid; grid-template-columns: 1.2fr 0.9fr; gap: 24px; align-items: stretch; }
+    .card { display: flex; flex-direction: column; background: rgba(15, 23, 42, 0.95); border-radius: 28px; border: 1px solid rgba(148, 163, 184, 0.18); box-shadow: 0 28px 80px rgba(15, 23, 42, 0.55); padding: 32px; }
+    .summary-panel { margin-top: 28px; padding: 24px 24px 20px; border-radius: 24px; background: rgba(31, 41, 55, 0.96); border: 1px solid rgba(71, 85, 105, 0.28); display: flex; flex-direction: column; justify-content: space-between; }
+    .result-card { display: grid; gap: 18px; align-content: stretch; grid-template-rows: repeat(2, minmax(220px, 1fr)); }
+    .compact-panel { min-height: 0; padding: 20px 24px; border-radius: 24px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(71, 85, 105, 0.22); display: flex; flex-direction: column; justify-content: space-between; }
+    .compact-panel h2 { margin-bottom: 10px; }
+    .result-panel { min-height: 0; padding: 28px; border-radius: 24px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(71, 85, 105, 0.28); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 10px; font-weight: 700; color: #f8fafc; }
+    input, textarea, select { width: 100%; border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.24); padding: 16px; font-size: 1rem; color: #f8fafc; background: rgba(15, 23, 42, 0.8); }
+    textarea { min-height: 180px; resize: vertical; }
+    select { appearance: none; }
+    .button-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+    .button { display: inline-flex; align-items: center; justify-content: center; padding: 16px 24px; border-radius: 16px; border: none; font-weight: 700; cursor: pointer; transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, opacity 0.18s ease; }
+    .button.primary { background: linear-gradient(135deg, #2563eb, #22d3ee); color: #ffffff; }
+    .button.secondary { background: #1f2937; color: #e2e8f0; }
+    .button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(37, 99, 235, 0.25); }
+    .button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .meta { color: #94a3b8; margin-top: 16px; font-size: 0.95rem; }
+    .result-card { display: grid; gap: 18px; align-content: start; grid-template-rows: repeat(2, minmax(180px, 1fr)); }
+    .result-panel { min-height: 0; padding: 28px; border-radius: 24px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(71, 85, 105, 0.28); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+    .result-panel > div { display: flex; flex-direction: column; gap: 16px; }
+    .result-panel h2 { margin: 0 0 8px; font-size: 1.2rem; letter-spacing: 0.01em; color: #f8fafc; }
+    .result-panel .badge { width: fit-content; }
+    .result-panel p { margin: 0; color: #cbd5e1; line-height: 1.7; }
+    .badge { display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; border-radius: 999px; background: #2563eb; color: #f8fafc; font-weight: 700; letter-spacing: 0.01em; margin-top: 14px; }
+    .validation-panel { background: rgba(30, 41, 59, 0.95); border-radius: 20px; color: #e2e8f0; padding: 24px 22px; font-size: 0.95rem; line-height: 1.75; overflow: hidden; }
+    .progress-state { display: grid; gap: 14px; }
+    .progress-bar-track { width: 100%; height: 14px; border-radius: 999px; background: rgba(148, 163, 184, 0.18); overflow: hidden; }
+    .progress-bar-fill { width: 0%; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2563eb, #22d3ee); transition: width 0.35s ease; }
+    .progress-label { color: #cbd5e1; font-size: 0.95rem; }
+    .step-label { color: #f8fafc; font-weight: 700; }
+    .confidence-badge { margin-top: 18px; display: inline-flex; align-items: center; gap: 10px; padding: 14px 20px; border-radius: 999px; background: rgba(37, 99, 235, 0.16); color: #ffffff; font-weight: 700; }
+    .confidence-badge span { color: #ffffff; }
+    .status { margin-top: 16px; color: #94a3b8; font-size: 0.95rem; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Notification Router</h1>
+    <p>Advanced routing for incoming messages, with server-side policy and optional AI importance scoring.</p>
+  </header>
+  <main>
+    <div class="grid">
+      <section class="card">
+        <div class="form-group">
+          <label for="messageText">Message text</label>
+          <textarea id="messageText">Please share your OTP immediately to avoid account suspension.</textarea>
+        </div>
+        <div class="form-group">
+          <label for="conversationType">Conversation type</label>
+          <select id="conversationType">
+            <option value="personal">Personal</option>
+            <option value="group">Group</option>
+            <option value="business">Business</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="quietHours">Quiet hours</label>
+          <select id="quietHours"><option value="false">Disabled</option><option value="true">Enabled</option></select>
+        </div>
+        <div class="button-row">
+          <button id="sendBtn" class="button primary">Evaluate message</button>
+          <button id="resetBtn" class="button secondary" type="button">Reset form</button>
+        </div>
+        <p class="meta">The demo uses backend-only authorization so no API key is exposed in the browser.</p>
+        <div class="result-panel summary-panel">
+          <div>
+            <h2>Decision summary</h2>
+            <p id="resultSummary">The router will show a human-friendly summary after evaluation.</p>
+          </div>
+          <div class="confidence-badge">Confidence: <span id="confidenceText">--</span></div>
+        </div>
+      </section>
+      <section class="card result-card">
+        <div class="result-panel compact-panel">
+          <div>
+            <h2 id="notificationTitle">Ready to evaluate</h2>
+            <p id="notificationBody">Submit a message to see whether it should notify, digest, or mute.</p>
+          </div>
+          <div class="badge" id="notificationAction">Awaiting input</div>
+        </div>
+        <div class="result-panel compact-panel">
+          <div>
+            <h2>Evaluation progress</h2>
+            <div class="validation-panel">
+              <div class="progress-state">
+                <div class="progress-bar-track">
+                  <div class="progress-bar-fill" id="progressFill"></div>
+                </div>
+                <div>
+                  <div class="step-label" id="progressStep">Waiting for evaluation...</div>
+                  <div class="progress-label" id="progressLabel">0 of 0 stages complete</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script>
+    const state = {
+      messageText: document.getElementById('messageText'),
+      conversationType: document.getElementById('conversationType'),
+      quietHours: document.getElementById('quietHours'),
+      notificationTitle: document.getElementById('notificationTitle'),
+      notificationBody: document.getElementById('notificationBody'),
+      notificationAction: document.getElementById('notificationAction'),
+      resultSummary: document.getElementById('resultSummary'),
+      confidenceText: document.getElementById('confidenceText'),
+      progressFill: document.getElementById('progressFill'),
+      progressStep: document.getElementById('progressStep'),
+      progressLabel: document.getElementById('progressLabel'),
+      sendButton: document.getElementById('sendBtn'),
+    };
+
+    const updateProgress = (steps, activeIndex = -1) => {
+      const total = steps?.length || 0;
+      const current = activeIndex >= 0 ? activeIndex + 1 : 0;
+      const percent = total ? Math.round((current / total) * 100) : 0;
+      state.progressFill.style.width = `${percent}%`;
+      state.progressStep.textContent = total ? `Stage ${current} of ${total}` : 'Waiting for evaluation...';
+      state.progressLabel.textContent = total
+        ? steps[activeIndex] || 'Preparing evaluation...'
+        : 'No active stages available.';
+    };
+
+    const resetForm = () => {
+      state.messageText.value = 'Please share your OTP immediately to avoid account suspension.';
+      state.conversationType.value = 'personal';
+      state.quietHours.value = 'false';
+      state.notificationTitle.textContent = 'Ready to evaluate';
+      state.notificationBody.textContent = 'Submit a message to see whether it should notify, digest, or mute.';
+      state.notificationAction.textContent = 'Awaiting input';
+      state.resultSummary.textContent = 'The router will show a human-friendly summary after evaluation.';
+      state.confidenceText.textContent = '--';
+      updateProgress(['Ready to read the incoming message.'], 0);
+    };
+
+    document.getElementById('resetBtn').addEventListener('click', resetForm);
+
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+      state.notificationTitle.textContent = 'Processing message';
+      state.notificationBody.textContent = 'Connecting to the router service...';
+      state.notificationAction.textContent = 'In progress';
+      state.confidenceText.textContent = '--';
+      state.sendButton.disabled = true;
+      state.sendButton.textContent = 'Evaluating...';
+      updateProgress(['Reading incoming message content.'], 0);
+
+      const payload = {
+        message_id: 'demo-' + Date.now(),
+        text: state.messageText.value,
+        conversation_type: state.conversationType.value,
+        sender_name: 'Demo User',
+        forwarded_count: 0,
+        sender: {
+          trusted: false,
+          verified_business: false,
+          domain_matches: false,
+          is_group_admin: false,
+          report_count_30d: 0,
+        },
+        user: {
+          quiet_hours: state.quietHours.value === 'true',
+          sender_opened_30d: 0,
+          sender_dismissed_30d: 0,
+          sender_replied_30d: 0,
+          promotions_opted_out: false,
+          group_muted: false,
+          direct_mention: false,
+          similar_message_ids: [],
+        },
+      };
+
+      try {
+        const response = await fetch('/demo/route', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payload }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || data.message || 'Router error');
+
+        state.notificationTitle.textContent = data.action === 'notify' ? 'Notify now' : data.action === 'digest' ? 'Digest later' : 'Mute message';
+        state.notificationBody.textContent = data.reason || 'Router returned a decision.';
+        state.notificationAction.textContent = data.message_type ? data.message_type.toUpperCase() : 'UNKNOWN';
+        state.resultSummary.textContent = data.summary || 'The router made a decision based on the policy engine.';
+
+        const defaultSteps = [
+          'Read incoming message content.',
+          'Combine text and media transcript.',
+          'Evaluate policy and safety rules.',
+          'Check group, promotion, and quiet-hour status.',
+          'Finalize the routing decision.',
+        ];
+        const steps = data.validation_steps && data.validation_steps.length > 0 ? data.validation_steps : defaultSteps;
+        updateProgress(steps, 0);
+
+        for (let i = 0; i < steps.length; i += 1) {
+          setTimeout(() => updateProgress(steps, i), 300 * i);
+        }
+
+        setTimeout(() => {
+          state.confidenceText.textContent = data.confidence != null ? `${Math.round(data.confidence * 100)}%` : 'N/A';
+          updateProgress(steps, steps.length - 1);
+        }, 300 * steps.length + 200);
+      } catch (error) {
+        state.notificationTitle.textContent = 'Unable to evaluate';
+        state.notificationBody.textContent = error.message;
+        state.notificationAction.textContent = 'Error';
+        state.confidenceText.textContent = 'N/A';
+        updateProgress([`Error: ${error.message}`], 0);
+      } finally {
+        state.sendButton.disabled = false;
+        state.sendButton.textContent = 'Evaluate message';
+      }
+    });
+  </script>
+</body>
+</html>
